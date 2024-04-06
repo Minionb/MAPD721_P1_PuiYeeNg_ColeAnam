@@ -20,17 +20,27 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mapd721_p1_puiyeeng_coleanam.ui.theme.MAPD721P1PuiYeeNgColeAnamTheme
 import kotlinx.coroutines.launch
+import com.example.mapd721_p1_puiyeeng_coleanam.datastore.StoreProductInfo
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,44 +68,78 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data class Product(val productId: Int, val productName: String, val price: Double)
+data class Product(val productId: Int, val productName: String, val price: Double, var quantity: Int, val imagePath: String)
 
 @Composable
 fun MainScreen() {
 
+    // context
+    val context = LocalContext.current
+    // scope
+    val scope = rememberCoroutineScope()
+    // datastore Product
+    val dataStore = StoreProductInfo(context)
+
     val GroceriesList : List<Product> = listOf(
         Product(
-            productId = 6,
+            productId = 1,
             productName = "Watermelon",
             price = 2.99,
+            imagePath = "watermelon",
+            quantity = 0
         ),
         Product(
             productId = 2,
             productName = "Orange",
             price = 0.99,
+            imagePath = "orange",
+            quantity = 0
         ),
         Product(
             productId = 3,
             productName = "Banana",
             price = 1.69,
+            imagePath = "banana",
+            quantity = 0
         ),
         Product(
             productId = 4,
             productName = "Strawberry",
             price = 3.69,
+            imagePath = "strawberry",
+            quantity = 0
         ),
         Product(
             productId = 5,
             productName = "Blueberry",
             price = 2.99,
+            imagePath = "blueberry",
+            quantity = 0
         ),
         Product(
             productId = 6,
-            productName = "Watermelon",
+            productName = "Apple",
             price = 2.99,
+            imagePath = "apple",
+            quantity = 0
         )
-
     )
+
+    val addedProducts = remember { mutableStateListOf<Product>() }
+
+    var retrievedProducts by remember { mutableStateOf(
+        emptyList<Product>()
+    ) }
+
+    // State to track if dialog is shown
+    var showDialog by remember { mutableStateOf(false) }
+
+    // LaunchedEffect to perform data loading
+    LaunchedEffect(Unit) {
+        retrievedProducts = dataStore.readProducts()
+        addedProducts.clear()
+        addedProducts.addAll(retrievedProducts)
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
 
@@ -114,12 +159,11 @@ fun MainScreen() {
             Spacer(modifier = Modifier.weight(1f))
             IconButton(
                 onClick = {
-//                    showPopupBox(
-//                        context,
-//                        savedProductIDState.value,
-//                        savedProductNameState.value,
-//                        savePriceState.value
-//                    )
+                    scope.launch {
+                        retrievedProducts = dataStore.readProducts()
+                        showDialog = true
+
+                    }
                 },
                 modifier = Modifier.padding(end = 16.dp)
             ) {
@@ -130,8 +174,10 @@ fun MainScreen() {
             }
             Button(
                 onClick = {
-
-
+                    scope.launch {
+                        dataStore.clearProducts()
+                        addedProducts.clear()
+                    }
                 },
                 modifier = Modifier.padding(end = 16.dp)
             ) {
@@ -140,41 +186,35 @@ fun MainScreen() {
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-        ProductList(products = GroceriesList)
+        if (showDialog) {
+            ProductListDialog(
+                products = retrievedProducts,
+                onDismiss = { showDialog = false }
+            )
+        }
+        ProductList(products = GroceriesList,
+            addToCart = {
+                product ->
+//            addedProducts.add(product)
+            scope.launch {
+                dataStore.saveProducts(product)
+            }
+        })
     }
-}
-
-
-private fun showPopupBox(context: Context, productId: Int?, productName: String?, productPrice: Double?) {
-    val builder = AlertDialog.Builder(context)
-
-    builder.setTitle("Shopping Cart")
-    if(productId == 0 && productName == "" && productPrice == 0.0){
-        builder.setMessage("Nothing is in the cart.")
-    }
-    else {
-        builder.setMessage("Product ID: $productId\nProduct Name: $productName\nPrice: $$productPrice")
-    }
-    builder.setPositiveButton("OK") { dialog, which ->
-        // Handle OK button click
-        dialog.dismiss() // Dismiss the dialog
-    }
-    val dialog: AlertDialog = builder.create()
-    dialog.show()
 }
 
 
 @Composable
-fun ProductList(products: List<Product>) {
+fun ProductList(products: List<Product>,  addToCart: (Product) -> Unit) {
     LazyColumn {
         items(products) { product ->
-            ProductItem(product)
+            ProductItem(product, addToCart = { addToCart(product)})
         }
     }
 }
 
 @Composable
-fun ProductItem(product: Product) {
+fun ProductItem(product: Product, addToCart: () -> Unit) {
     Card(
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier
@@ -198,11 +238,66 @@ fun ProductItem(product: Product) {
                     style = TextStyle(fontWeight = FontWeight.Bold)
                 )
                 Text(text = product.price.toString())
+                Button(onClick = addToCart, Modifier
+                    .align(Alignment.End)) {
+                    Text("Add to Cart")
+                }
 
-                // Add any other product details you want to display
+
             }
         }
     }
+}
+
+@Composable
+fun ProductCard(product: Product) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(text = "Product ID : ${product.productId}")
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "Product Name : ${product.productName}")
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "Price: $${product.price}")
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "Quantity: ${product.quantity}")
+        }
+    }
+}
+
+
+@Composable
+fun ProductListDialog(
+    products: List<Product>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(text = "Shopping Cart") },
+        confirmButton = {
+            Button(onClick = { onDismiss() }) {
+                Text(text = "Close")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.padding(8.dp)
+            ) {
+                LazyColumn {
+                    items(products) { product ->
+                        ProductCard(product = product)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+    )
 }
 
 
