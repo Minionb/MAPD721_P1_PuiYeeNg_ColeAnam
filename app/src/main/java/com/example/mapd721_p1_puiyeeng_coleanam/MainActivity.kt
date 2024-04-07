@@ -1,11 +1,8 @@
 package com.example.mapd721_p1_puiyeeng_coleanam
 
-import android.app.AlertDialog
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +48,10 @@ import androidx.compose.ui.unit.sp
 import com.example.mapd721_p1_puiyeeng_coleanam.ui.theme.MAPD721P1PuiYeeNgColeAnamTheme
 import kotlinx.coroutines.launch
 import com.example.mapd721_p1_puiyeeng_coleanam.datastore.StoreProductInfo
+import com.example.mapd721_p1_puiyeeng_coleanam.firebase.model.Order
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,6 +81,9 @@ fun MainScreen() {
     val scope = rememberCoroutineScope()
     // datastore Product
     val dataStore = StoreProductInfo(context)
+
+    val database = FirebaseDatabase.getInstance()
+    val ordersRef = database.getReference("orders")
 
     val GroceriesList : List<Product> = listOf(
         Product(
@@ -196,7 +199,8 @@ fun MainScreen() {
             ProductListDialog(
                 products = retrievedProducts,
                 onDismiss = { showDialog = false },
-                totalPrice = totalPrice
+                totalPrice = totalPrice,
+                ordersRef= ordersRef,
             )
         }
         ProductList(products = GroceriesList,
@@ -278,11 +282,15 @@ fun ProductCard(product: Product) {
 }
 
 
+
+
+
 @Composable
 fun ProductListDialog(
     products: List<Product>,
     onDismiss: () -> Unit,
-    totalPrice: Double
+    totalPrice: Double,
+    ordersRef: DatabaseReference
 ) {
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -295,7 +303,29 @@ fun ProductListDialog(
                 Button(onClick = { onDismiss() }) {
                     Text(text = "Close")
                 }
-                Button(onClick = { /* Handle order button click */ }) {
+                Button(onClick = {
+                    val orderId = UUID.randomUUID().toString()
+                    val passCode = generateRandomPassCode(16)
+                    val order = Order(
+                        orderId = orderId,
+                        passCode = passCode,
+                        productList = products,
+                        totalPrice = totalPrice,
+                        customerName = "John Doe",
+                        deliveryOption = "Pickup",
+                        address = "123 Main St"
+                    )
+
+                    ordersRef.child(order.orderId).setValue(order)
+                        .addOnSuccessListener {
+                            // Order successfully added to the Realtime Database
+                            println("Order added to the Realtime Database")
+                        }
+                        .addOnFailureListener { e ->
+                            // Error adding order to the Realtime Database
+                            println("Error adding order to the Realtime Database: $e")
+                        }
+                }) {
                     Text(text = "Checkout")
                 }
             }
@@ -323,6 +353,14 @@ fun ProductListDialog(
 
         }
     )
+}
+
+
+fun generateRandomPassCode(length: Int): String {
+    val charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return (1..length)
+        .map { charset.random() }
+        .joinToString("")
 }
 
 
