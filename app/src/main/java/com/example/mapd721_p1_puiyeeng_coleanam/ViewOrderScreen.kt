@@ -1,8 +1,6 @@
 package com.example.mapd721_p1_puiyeeng_coleanam
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,11 +11,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,11 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.mapd721_p1_puiyeeng_coleanam.firebase.model.Order
-import com.example.mapd721_p1_puiyeeng_coleanam.ui.theme.MAPD721P1PuiYeeNgColeAnamTheme
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.mapd721_p1_puiyeeng_coleanam.model.Order
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -37,88 +42,120 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.Query
 import com.google.firebase.database.ValueEventListener
 
-class ViewOrderActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            MAPD721P1PuiYeeNgColeAnamTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    ViewOrderScreen()
-                }
-            }
-        }
-    }
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ViewOrderScreen() {
+fun ViewOrderScreen(navController: NavController) {
     var orderId by remember { mutableStateOf(TextFieldValue()) }
     var passCode by remember { mutableStateOf(TextFieldValue()) }
     var order by remember { mutableStateOf<Order?>(null) }
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        // Search box
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextField(
-                value = orderId,
-                onValueChange = { orderId = it },
-                label = { Text("Order ID") },
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            TextField(
-                value = passCode,
-                onValueChange = { passCode = it },
-                label = { Text("Passcode") },
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Button(onClick = {
-                searchOrder(orderId.text, passCode.text)
-                {
-                        fetchedOrder ->
-                    // Handle the fetched order here
-                    if (fetchedOrder != null) {
-                        // Order found
-                        order = fetchedOrder
-                    } else {
-                        // Order not found or incorrect passCode
-                        // Handle the case accordingly
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                    text = "Search Order", textAlign = TextAlign.Center,
+                ) },
+                navigationIcon = {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                    ) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                } }) {
-                Text("Search")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Order details
-        order?.let { fetchedOrder ->
-            Column {
-                Text("Order ID: ${fetchedOrder.orderId}")
-                Text("Customer Name: ${fetchedOrder.customerName}")
-                Text("Delivery Option: ${fetchedOrder.deliveryOption}")
-                Text("Address: ${fetchedOrder.address}")
+                }
+            )
+        },
+        content = { padding ->
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding)
+            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Search box
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextField(
+                        value = orderId,
+                        onValueChange = { orderId = it },
+                        label = { Text("Order ID") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    TextField(
+                        value = passCode,
+                        onValueChange = { passCode = it },
+                        label = { Text("Passcode") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Button(onClick = {
+                        searchOrder(orderId.text, passCode.text)
+                        { fetchedOrder ->
+                            // Handle the fetched order here
+                            if (fetchedOrder != null) {
+                                // Order found
+                                order = fetchedOrder
+                            } else {
+                                // Order not found or incorrect passCode
+                                // Handle the case accordingly
+                            }
+                        }
+                    }) {
+                        Text("Search")
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Product list
-                LazyColumn {
-                    items(fetchedOrder.productList) { product ->
-                        Text("Product ID: ${product.productId}")
-                        Text("Product Name: ${product.productName}")
-                        Text("Price: ${product.price}")
-                        Text("Quantity: ${product.quantity}")
-                        Spacer(modifier = Modifier.height(8.dp))
+                // Order details
+                order?.let { fetchedOrder ->
+                    Text(
+                        text = "Order Summary",
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                    Column {
+                        Text("Order ID: ${fetchedOrder.orderId}")
+                        Text("Customer Name: ${fetchedOrder.customerName}")
+                        Text("Delivery Option: ${fetchedOrder.deliveryOption}")
+                        if (fetchedOrder.deliveryOption == "Pickup") {
+                            Text("Pickup Address: ${fetchedOrder.address}")
+                        }
+                        else{
+                            Text("Shipping Address: ${fetchedOrder.address}")
+                        }
+                        Text("Order Date: ${fetchedOrder.orderDate}")
+                        if (fetchedOrder.deliveryOption == "Pickup") {
+                            Text("Pickup Date: ${fetchedOrder.pickupDate}")
+                        }
+                        else{
+                            Text("Delivery Date: ${fetchedOrder.pickupDate}")
+                        }
+                        Text("Total Price: ${fetchedOrder.totalPrice}")
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Product List",
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        // Product list
+                        LazyColumn {
+                            items(fetchedOrder.productList) { product ->
+                                ProductCard(product = product)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
                     }
                 }
             }
         }
-    }
+        }
+    )
 }
 
 private val ordersRef: DatabaseReference = FirebaseDatabase.getInstance().getReference("orders")
@@ -155,12 +192,4 @@ private fun searchOrder(orderId: String, passCode: String, callback: (Order?) ->
             callback(null)
         }
     })
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ViewOrderScreenPreview() {
-    MAPD721P1PuiYeeNgColeAnamTheme {
-        ViewOrderScreen()
-    }
 }
