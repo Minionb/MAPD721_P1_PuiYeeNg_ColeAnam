@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -45,10 +47,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.mapd721_p1_puiyeeng_coleanam.ui.theme.MAPD721P1PuiYeeNgColeAnamTheme
 import kotlinx.coroutines.launch
 import com.example.mapd721_p1_puiyeeng_coleanam.datastore.StoreProductInfo
-import com.example.mapd721_p1_puiyeeng_coleanam.firebase.model.Order
+import com.example.mapd721_p1_puiyeeng_coleanam.model.Order
+import com.example.mapd721_p1_puiyeeng_coleanam.model.Product
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import java.util.UUID
@@ -63,17 +70,32 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen()
+                    EasyGroceriesApp()
                 }
             }
         }
     }
 }
 
-data class Product(val productId: Int, val productName: String, val price: Double, var quantity: Int, val imagePath: String)
+
 
 @Composable
-fun MainScreen() {
+fun EasyGroceriesApp() {
+    val navController = rememberNavController()
+
+    NavHost(navController, startDestination = "home") {
+        composable("home") {
+            MainScreen(navController)
+        }
+        composable("viewOrder") {
+            ViewOrderScreen(navController)
+        }
+    }
+}
+
+
+@Composable
+fun MainScreen(navController: NavController) {
 
     // context
     val context = LocalContext.current
@@ -157,11 +179,35 @@ fun MainScreen() {
                 .background(Color.LightGray),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Home button
+            IconButton(
+                onClick = { /* TODO: Handle home button click */ },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Home,
+                    contentDescription = "Home"
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Check Order button
+            IconButton(
+                onClick = { navController.navigate("viewOrder") },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Check Order"
+                )
+            }
+
             Text(
                 text = "Easy Grocery",
                 fontSize = 20.sp,
                 textAlign = TextAlign.Start,
-                modifier = Modifier.padding(start = 16.dp),
+                modifier = Modifier.padding(start = 8.dp),
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.weight(1f))
@@ -173,7 +219,7 @@ fun MainScreen() {
                         totalPrice = dataStore.readProductsTotalPrice()
                     }
                 },
-                modifier = Modifier.padding(end = 16.dp)
+                modifier = Modifier.padding(end = 8.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ShoppingCart,
@@ -188,7 +234,7 @@ fun MainScreen() {
                         totalPrice = 0.0
                     }
                 },
-                modifier = Modifier.padding(end = 16.dp)
+                modifier = Modifier.padding(end = 8.dp)
             ) {
                 Text(text = "Clear")
             }
@@ -313,7 +359,9 @@ fun ProductListDialog(
                         totalPrice = totalPrice,
                         customerName = "John Doe",
                         deliveryOption = "Pickup",
-                        address = "123 Main St"
+                        address = "123 Main St",
+                        orderDate = "2024-04-07",
+                        pickupDate = "2024-04-08",
                     )
 
                     ordersRef.child(order.orderId).setValue(order)
@@ -368,6 +416,6 @@ fun generateRandomPassCode(length: Int): String {
 @Composable
 fun MainScreenPreview() {
     MAPD721P1PuiYeeNgColeAnamTheme {
-        MainScreen()
+        EasyGroceriesApp()
     }
 }
