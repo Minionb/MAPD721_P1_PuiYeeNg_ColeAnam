@@ -7,6 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -134,6 +136,8 @@ fun MainScreen() {
     // State to track if dialog is shown
     var showDialog by remember { mutableStateOf(false) }
 
+    var totalPrice by remember { mutableStateOf(0.0) }
+
     // LaunchedEffect to perform data loading
     LaunchedEffect(Unit) {
         retrievedProducts = dataStore.readProducts()
@@ -154,7 +158,8 @@ fun MainScreen() {
                 text = "Easy Grocery",
                 fontSize = 20.sp,
                 textAlign = TextAlign.Start,
-                modifier = Modifier.padding(start = 16.dp)
+                modifier = Modifier.padding(start = 16.dp),
+                fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.weight(1f))
             IconButton(
@@ -162,7 +167,7 @@ fun MainScreen() {
                     scope.launch {
                         retrievedProducts = dataStore.readProducts()
                         showDialog = true
-
+                        totalPrice = dataStore.readProductsTotalPrice()
                     }
                 },
                 modifier = Modifier.padding(end = 16.dp)
@@ -177,6 +182,7 @@ fun MainScreen() {
                     scope.launch {
                         dataStore.clearProducts()
                         addedProducts.clear()
+                        totalPrice = 0.0
                     }
                 },
                 modifier = Modifier.padding(end = 16.dp)
@@ -189,13 +195,13 @@ fun MainScreen() {
         if (showDialog) {
             ProductListDialog(
                 products = retrievedProducts,
-                onDismiss = { showDialog = false }
+                onDismiss = { showDialog = false },
+                totalPrice = totalPrice
             )
         }
         ProductList(products = GroceriesList,
             addToCart = {
                 product ->
-//            addedProducts.add(product)
             scope.launch {
                 dataStore.saveProducts(product)
             }
@@ -275,27 +281,46 @@ fun ProductCard(product: Product) {
 @Composable
 fun ProductListDialog(
     products: List<Product>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    totalPrice: Double
 ) {
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Text(text = "Shopping Cart") },
+        title = { Text(
+            text = "Shopping Cart",
+            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        ) },
         confirmButton = {
-            Button(onClick = { onDismiss() }) {
-                Text(text = "Close")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Button(onClick = { onDismiss() }) {
+                    Text(text = "Close")
+                }
+                Button(onClick = { /* Handle order button click */ }) {
+                    Text(text = "Checkout")
+                }
             }
         },
         text = {
             Column(
-                modifier = Modifier.padding(8.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                LazyColumn {
-                    items(products) { product ->
-                        ProductCard(product = product)
-                        Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    LazyColumn {
+                        items(products) { product ->
+                            ProductCard(product = product)
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
+                Text(
+                    text = "Total: $totalPrice",
+                    modifier = Modifier.padding(top = 8.dp),
+                    style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                )
             }
+
         }
     )
 }

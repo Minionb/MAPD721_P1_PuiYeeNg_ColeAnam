@@ -52,11 +52,23 @@ class StoreProductInfo(private val context: Context) {
         return deserializeProducts(productsString)
     }
 
+    suspend fun readProductsTotalPrice(): Double {
+        val existingProducts = readProducts().toMutableList()
+        var totalPrice = 0.0
+        for (product in existingProducts) {
+            val productTotal = product.price
+            totalPrice += productTotal
+        }
+        totalPrice = BigDecimal(totalPrice).setScale(2, RoundingMode.HALF_UP).toDouble()
+        return totalPrice
+    }
+
     suspend fun clearProducts() {
         context.dataStore.edit { preferences ->
             preferences.clear()
         }
     }
+
 }
 
 private val gson = Gson()
@@ -69,3 +81,4 @@ fun deserializeProducts(productsString: String): List<Product> {
     val type = object : TypeToken<List<Product>>() {}.type
     return gson.fromJson(productsString, type)
 }
+
