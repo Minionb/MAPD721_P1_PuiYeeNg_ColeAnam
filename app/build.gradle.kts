@@ -74,5 +74,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10")
     implementation("com.google.firebase:firebase-auth-ktx:21.0.1")
     implementation("com.google.firebase:firebase-firestore-ktx:23.0.1")
+    implementation ("com.google.firebase:firebase-database:20.0.0")
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
 }

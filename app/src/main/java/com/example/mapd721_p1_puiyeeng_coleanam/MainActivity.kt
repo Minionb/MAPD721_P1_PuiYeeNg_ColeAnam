@@ -1,6 +1,7 @@
 package com.example.mapd721_p1_puiyeeng_coleanam
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -363,16 +364,18 @@ fun ProductListDialog(
                         orderDate = "2024-04-07",
                         pickupDate = "2024-04-08",
                     )
-
+                    println("Clicked")
                     ordersRef.child(order.orderId).setValue(order)
                         .addOnSuccessListener {
                             // Order successfully added to the Realtime Database
                             println("Order added to the Realtime Database")
+
                         }
                         .addOnFailureListener { e ->
                             // Error adding order to the Realtime Database
                             println("Error adding order to the Realtime Database: $e")
                         }
+                    println("After Clicked $order")
                 }) {
                     Text(text = "Checkout")
                 }
