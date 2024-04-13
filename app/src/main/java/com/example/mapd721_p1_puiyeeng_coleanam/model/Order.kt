@@ -5,11 +5,11 @@ data class Order(
     val passCode: String,
     val productList: List<Product>,
     val totalPrice: Double,
-    val customerName: String,
-    val deliveryOption: String,
-    val address: String,
-    val orderDate: String,
-    val pickupDate: String,
+    var customerName: String,
+    var deliveryOption: String,
+    var address: String,
+    var orderDate: String,
+    var pickupDate: String,
 ) {
     constructor() : this(
         orderId = "",
