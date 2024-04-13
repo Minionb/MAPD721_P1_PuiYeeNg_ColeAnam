@@ -253,7 +253,7 @@ fun UserInfoFormScreen(navController: NavController, order: Order) {
                                 order.address = storeLocation.text
                             }
                             else {
-                                order.address = "${userAddress.text} ${userCity.text} ,${userProvince.text}, ${userCountry.text}, ${userPostal.text}"
+                                order.address = "${userAddress.text} ${userCity.text} , ${userProvince.text}, ${userCountry.text}, ${userPostal.text}"
                             }
                             order.orderDate = getCurrentDate()
                             order.pickupDate = getTomorrowDate()
