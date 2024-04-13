@@ -76,4 +76,5 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx:23.0.1")
     implementation ("com.google.firebase:firebase-database:20.0.0")
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
+    implementation ("com.android.billingclient:billing-ktx:6.2.0")
 }
