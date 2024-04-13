@@ -1,9 +1,11 @@
 package com.example.mapd721_p1_puiyeeng_coleanam
 
+import android.app.Activity
+import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,19 +51,32 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.BillingClient.ProductType
+import com.android.billingclient.api.BillingClientStateListener
+import com.android.billingclient.api.BillingFlowParams
+import com.android.billingclient.api.BillingResult
+import com.android.billingclient.api.PurchasesUpdatedListener
+import com.android.billingclient.api.QueryProductDetailsParams
 import com.example.mapd721_p1_puiyeeng_coleanam.ui.theme.MAPD721P1PuiYeeNgColeAnamTheme
 import kotlinx.coroutines.launch
 import com.example.mapd721_p1_puiyeeng_coleanam.datastore.StoreProductInfo
 import com.example.mapd721_p1_puiyeeng_coleanam.model.Order
 import com.example.mapd721_p1_puiyeeng_coleanam.model.Product
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
+import com.google.common.collect.ImmutableList
+import com.google.gson.Gson
 import java.util.UUID
 
+private var billingClient : BillingClient? = null
+
 class MainActivity : ComponentActivity() {
+
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -71,15 +86,39 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+
                     EasyGroceriesApp()
+                    initBilling()
                 }
             }
         }
     }
+
+    private val purchaseUpdatedListener =
+        PurchasesUpdatedListener { billingResult, purchases ->
+
+        }
+
+    fun initBilling() {
+
+        println("InitBilling")
+
+        billingClient = BillingClient.newBuilder(this)
+            .setListener(purchaseUpdatedListener)
+            .enablePendingPurchases()
+            .build()
+
+        if (billingClient == null) {
+            println("BillingClient is still null")
+        } else {
+            println("BillingClient is not null")
+        }
+
+
+    }
 }
 
-
-
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun EasyGroceriesApp() {
     val navController = rememberNavController()
@@ -91,6 +130,18 @@ fun EasyGroceriesApp() {
         composable("viewOrder") {
             ViewOrderScreen(navController)
         }
+        composable("userInfoForm/{order}",
+            arguments = listOf(navArgument("order") { type = NavType.StringType })
+        ) {navBackStackEntry ->
+            navBackStackEntry.arguments?.getString("order")?.let {json ->
+                val order = Gson().fromJson(json, Order::class.java)
+                UserInfoFormScreen(navController, order)
+            }
+        }
+
+//        composable("userInfoForm") {
+//            UserInfoFormScreen(navController)
+//        }
     }
 }
 
@@ -104,9 +155,6 @@ fun MainScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     // datastore Product
     val dataStore = StoreProductInfo(context)
-
-    val database = FirebaseDatabase.getInstance()
-    val ordersRef = database.getReference("orders")
 
     val GroceriesList : List<Product> = listOf(
         Product(
@@ -247,16 +295,17 @@ fun MainScreen(navController: NavController) {
                 products = retrievedProducts,
                 onDismiss = { showDialog = false },
                 totalPrice = totalPrice,
-                ordersRef= ordersRef,
+                //ordersRef= ordersRef,
+                navController = navController
             )
         }
         ProductList(products = GroceriesList,
             addToCart = {
-                product ->
-            scope.launch {
-                dataStore.saveProducts(product)
-            }
-        })
+                    product ->
+                scope.launch {
+                    dataStore.saveProducts(product)
+                }
+            })
     }
 }
 
@@ -337,7 +386,8 @@ fun ProductListDialog(
     products: List<Product>,
     onDismiss: () -> Unit,
     totalPrice: Double,
-    ordersRef: DatabaseReference
+//    ordersRef: DatabaseReference,
+    navController: NavController
 ) {
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -358,24 +408,75 @@ fun ProductListDialog(
                         passCode = passCode,
                         productList = products,
                         totalPrice = totalPrice,
-                        customerName = "John Doe",
-                        deliveryOption = "Pickup",
-                        address = "123 Main St",
-                        orderDate = "2024-04-07",
-                        pickupDate = "2024-04-08",
-                    )
+                        customerName = "",
+                        deliveryOption = "",
+                        address = "",
+                        orderDate = "",
+                        pickupDate = "",
+
+                        )
                     println("Clicked")
-                    ordersRef.child(order.orderId).setValue(order)
-                        .addOnSuccessListener {
-                            // Order successfully added to the Realtime Database
-                            println("Order added to the Realtime Database")
+
+                    billingClient!!.startConnection(object : BillingClientStateListener {
+                        override fun onBillingSetupFinished(billingResult: BillingResult) {
+                            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                                println("Response Code OK")
+                                val queryProductDetailsParams =
+                                    QueryProductDetailsParams.newBuilder()
+                                        .setProductList(
+                                            ImmutableList.of(
+                                                QueryProductDetailsParams.Product.newBuilder()
+                                                    .setProductId(order.orderId)
+                                                    .setProductType(ProductType.INAPP)
+                                                    .build()
+                                            )
+                                        )
+                                        .build()
+
+                                billingClient!!.queryProductDetailsAsync(queryProductDetailsParams) {
+                                        _,
+                                        productDetailsList ->
+                                    val activity : Activity = MainActivity()
+                                    println("Query Product Details Async")
+                                    for (productDetails in productDetailsList) {
+                                        val productDetailsParamsList = listOf(
+                                            BillingFlowParams.ProductDetailsParams.newBuilder()
+                                                .setProductDetails(productDetails)
+                                                .build()
+                                        )
+                                        val billingFlowParams = BillingFlowParams.newBuilder()
+                                            .setProductDetailsParamsList(productDetailsParamsList)
+                                            .build()
+                                        billingClient!!.launchBillingFlow(activity, billingFlowParams)
+                                    }
+                                }
+                            } else {
+                                println("Connection to Google Play Not OK")
+                            }
+                        }
+
+                        override fun onBillingServiceDisconnected() {
 
                         }
-                        .addOnFailureListener { e ->
-                            // Error adding order to the Realtime Database
-                            println("Error adding order to the Realtime Database: $e")
-                        }
+
+                    })
+
+
+
+//                    ordersRef.child(order.orderId).setValue(order)
+//                        .addOnSuccessListener {
+//                            // Order successfully added to the Realtime Database
+//                            println("Order added to the Realtime Database")
+//
+//                        }
+//                        .addOnFailureListener { e ->
+//                            // Error adding order to the Realtime Database
+//                            println("Error adding order to the Realtime Database: $e")
+//                        }
                     println("After Clicked $order")
+                    onDismiss()
+                    navController.navigate("userInfoForm/${Gson().toJson(order)}")
+                    //navController.navigate("userInfoForm")
                 }) {
                     Text(text = "Checkout")
                 }
@@ -415,10 +516,12 @@ fun generateRandomPassCode(length: Int): String {
 }
 
 
-@Preview(showBackground = true)
-@Composable
-fun MainScreenPreview() {
-    MAPD721P1PuiYeeNgColeAnamTheme {
-        EasyGroceriesApp()
-    }
-}
+
+
+//@Preview(showBackground = true)
+//@Composable
+//fun MainScreenPreview() {
+//    MAPD721P1PuiYeeNgColeAnamTheme {
+//        EasyGroceriesApp()
+//    }
+//}

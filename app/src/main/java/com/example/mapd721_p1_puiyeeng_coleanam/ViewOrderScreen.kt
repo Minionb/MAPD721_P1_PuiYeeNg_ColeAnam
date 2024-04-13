@@ -120,15 +120,15 @@ fun ViewOrderScreen(navController: NavController) {
                         Text("Order ID: ${fetchedOrder.orderId}")
                         Text("Customer Name: ${fetchedOrder.customerName}")
                         Text("Delivery Option: ${fetchedOrder.deliveryOption}")
-                        if (fetchedOrder.deliveryOption == "Pickup") {
-                            Text("Pickup Address: ${fetchedOrder.address}")
+                        if (fetchedOrder.deliveryOption == "Pick-Up") {
+                            Text("Pick-Up Address: ${fetchedOrder.address}")
                         }
                         else{
                             Text("Shipping Address: ${fetchedOrder.address}")
                         }
                         Text("Order Date: ${fetchedOrder.orderDate}")
-                        if (fetchedOrder.deliveryOption == "Pickup") {
-                            Text("Pickup Date: ${fetchedOrder.pickupDate}")
+                        if (fetchedOrder.deliveryOption == "Pick-Up") {
+                            Text("Pick-Up Date: ${fetchedOrder.pickupDate}")
                         }
                         else{
                             Text("Delivery Date: ${fetchedOrder.pickupDate}")
