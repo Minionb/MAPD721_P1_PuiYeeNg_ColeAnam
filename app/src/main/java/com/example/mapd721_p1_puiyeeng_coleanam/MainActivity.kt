@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,12 +44,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -70,6 +75,7 @@ import com.example.mapd721_p1_puiyeeng_coleanam.model.Order
 import com.example.mapd721_p1_puiyeeng_coleanam.model.Product
 import com.google.common.collect.ImmutableList
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
 import java.util.UUID
 
 private var billingClient : BillingClient? = null
@@ -138,10 +144,6 @@ fun EasyGroceriesApp() {
                 UserInfoFormScreen(navController, order)
             }
         }
-
-//        composable("userInfoForm") {
-//            UserInfoFormScreen(navController)
-//        }
     }
 }
 
@@ -161,7 +163,7 @@ fun MainScreen(navController: NavController) {
             productId = 1,
             productName = "Watermelon",
             price = 2.99,
-            imagePath = "watermelon",
+            imagePath = "",
             quantity = 0
         ),
         Product(
@@ -196,7 +198,7 @@ fun MainScreen(navController: NavController) {
             productId = 6,
             productName = "Apple",
             price = 2.99,
-            imagePath = "apple",
+            imagePath = "a",
             quantity = 0
         )
     )
@@ -295,6 +297,8 @@ fun MainScreen(navController: NavController) {
                 products = retrievedProducts,
                 onDismiss = { showDialog = false },
                 totalPrice = totalPrice,
+                scope = scope,
+                dataStore = dataStore,
                 //ordersRef= ordersRef,
                 navController = navController
             )
@@ -331,25 +335,41 @@ fun ProductItem(product: Product, addToCart: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(8.dp)
         ) {
-//            Image(
-//                painter = rememberCoilPainter(product.imageUrl),
-//                contentDescription = product.productName,
-//                modifier = Modifier.size(64.dp)
-//            )
             Column(
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = product.productName,
-                    style = TextStyle(fontWeight = FontWeight.Bold)
+                    style = TextStyle(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(text = product.price.toString())
-                Button(onClick = addToCart, Modifier
-                    .align(Alignment.End)) {
+                Button(onClick = addToCart) {
                     Text("Add to Cart")
                 }
-
-
+            }
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                val productDrawableMap = mapOf(
+                    "Apple" to R.drawable.apple,
+                    "Banana" to R.drawable.banana,
+                    "Blueberry" to R.drawable.blueberry,
+                    "Orange" to R.drawable.orange,
+                    "Strawberry" to R.drawable.strawberry,
+                    "Watermelon" to R.drawable.watermelon,
+                )
+                val drawableResId = productDrawableMap[product.productName] ?: R.drawable.default_image
+                println(product.productName)
+                Image(
+                    painter = painterResource(drawableResId), // Replace with your drawable image resource ID
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
@@ -387,6 +407,8 @@ fun ProductListDialog(
     onDismiss: () -> Unit,
     totalPrice: Double,
 //    ordersRef: DatabaseReference,
+    scope: CoroutineScope,
+    dataStore: StoreProductInfo,
     navController: NavController
 ) {
     AlertDialog(
@@ -416,6 +438,9 @@ fun ProductListDialog(
 
                         )
                     println("Clicked")
+                    scope.launch {
+                        dataStore.clearProducts()
+                    }
 
                     billingClient!!.startConnection(object : BillingClientStateListener {
                         override fun onBillingSetupFinished(billingResult: BillingResult) {
@@ -460,19 +485,6 @@ fun ProductListDialog(
                         }
 
                     })
-
-
-
-//                    ordersRef.child(order.orderId).setValue(order)
-//                        .addOnSuccessListener {
-//                            // Order successfully added to the Realtime Database
-//                            println("Order added to the Realtime Database")
-//
-//                        }
-//                        .addOnFailureListener { e ->
-//                            // Error adding order to the Realtime Database
-//                            println("Error adding order to the Realtime Database: $e")
-//                        }
                     println("After Clicked $order")
                     onDismiss()
                     navController.navigate("userInfoForm/${Gson().toJson(order)}")
@@ -515,13 +527,3 @@ fun generateRandomPassCode(length: Int): String {
         .joinToString("")
 }
 
-
-
-
-//@Preview(showBackground = true)
-//@Composable
-//fun MainScreenPreview() {
-//    MAPD721P1PuiYeeNgColeAnamTheme {
-//        EasyGroceriesApp()
-//    }
-//}
